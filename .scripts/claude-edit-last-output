@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Open the most recent Claude Code assistant response in $EDITOR.
+#
+# Bound to a key in zellij (see zellij/config.kdl) so it acts as an
+# in-terminal "edit last output" shortcut while Claude Code is focused.
+# The newest transcript file across all projects is treated as the
+# active conversation.
+set -euo pipefail
+
+projects="$HOME/.claude/projects"
+
+# Newest *.jsonl (by mtime) under a directory.
+pick_newest() {
+  find "$1" -name '*.jsonl' -type f -print0 2>/dev/null \
+    | xargs -0 stat -f '%m %N' 2>/dev/null \
+    | sort -rn | head -1 | cut -d' ' -f2-
+}
+
+# Prefer the focused pane's project (its cwd, which zellij gives this pane).
+# Claude munges the cwd into the project dir name by replacing '/' with '-'.
+# This keeps Ctrl-y scoped to the conversation you're looking at instead of a
+# background agent or another repo that happened to write more recently.
+proj_dir="$projects/${PWD//\//-}"
+transcript=""
+[[ -d "$proj_dir" ]] && transcript="$(pick_newest "$proj_dir")"
+[[ -z "${transcript:-}" ]] && transcript="$(pick_newest "$projects")"
+
+if [[ -z "${transcript:-}" || ! -f "$transcript" ]]; then
+  echo "No Claude transcript found under $projects" >&2
+  read -r -p "Press enter to close..." _
+  exit 1
+fi
+
+# Last assistant message's concatenated text blocks.
+text="$(
+  jq -rs '
+    [ .[]
+      | select(.type == "assistant" and .message.role == "assistant")
+      | .message.content
+      | if type == "array"
+          then ([ .[] | select(.type == "text") | .text ] | join("\n\n"))
+          else (. | tostring)
+        end
+    ]
+    | map(select(. != null and . != ""))
+    | last // ""
+  ' "$transcript"
+)"
+
+if [[ -z "$text" ]]; then
+  echo "No assistant text found in $(basename "$transcript")" >&2
+  read -r -p "Press enter to close..." _
+  exit 1
+fi
+
+tmpbase="$(mktemp -t claude-output)"
+tmp="$tmpbase.md"
+mv "$tmpbase" "$tmp"
+printf '%s\n' "$text" > "$tmp"
+
+editor="${EDITOR:-${VISUAL:-}}"
+if [[ -z "$editor" ]]; then
+  for e in nvim vim vi nano; do
+    if command -v "$e" >/dev/null 2>&1; then
+      editor="$e"
+      break
+    fi
+  done
+fi
+
+exec "$editor" "$tmp"

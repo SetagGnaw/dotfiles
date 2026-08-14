@@ -1,0 +1,6 @@
+.DS_Store
+.vscode/
+zellij/plugins/
+zellij/config.kdl.bak*
+zellij/backups/
+.gh-cloned

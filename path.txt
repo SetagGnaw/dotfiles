@@ -1,0 +1,25 @@
+/Users/gateswang/.nvm/versions/node/v24.18.0/bin
+/Users/gateswang/Library/Application Support/reflex/bun/bin
+/Users/gateswang/google-cloud-sdk/bin
+/opt/homebrew/opt/python@3.14/bin
+/opt/homebrew/opt/zellij/bin
+/System/Cryptexes/App/usr/bin
+/Users/gateswang/go/bin
+/Users/gateswang/.cargo/bin
+/Users/gateswang/.krew/bin
+/opt/homebrew/bin
+/opt/homebrew/opt/mysql-client/bin
+/bin
+/Users/gateswang/Config/.scripts
+/Users/gateswang/.local/bin
+/opt/homebrew/opt/curl/bin
+/opt/homebrew/sbin
+/Library/TeX/texbin
+~/.moon/bin/
+/opt/salt
+/sbin
+/usr/bin
+/usr/local/bin
+/usr/local/istio-1.28.3/bin
+/usr/sbin
+/Applications/Visual Studio Code.app/Contents/Resources/app/bin

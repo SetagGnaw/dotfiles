@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if command -v zellij >/dev/null 2>&1; then
+  zellij_bin="$(command -v zellij)"
+elif [[ -x /opt/homebrew/opt/zellij/bin/zellij ]]; then
+  zellij_bin="/opt/homebrew/opt/zellij/bin/zellij"
+else
+  echo "zy: zellij not found on PATH" >&2
+  exit 127
+fi
+
+export SHELL_SESSIONS_DISABLE=1
+unset ZELLIJ ZELLIJ_PANE_ID ZELLIJ_SESSION_NAME
+
+agy_count=1
+if [[ $# -gt 0 && $1 =~ ^[0-9]+$ ]]; then
+  agy_count=$((10#$1))
+  shift
+fi
+
+if (( agy_count < 1 )); then
+  echo "zy: agy count must be at least 1" >&2
+  exit 2
+fi
+
+tmp_root="${TMPDIR:-/tmp}"
+tmp_root="${tmp_root%/}"
+layout_dir="$(mktemp -d "$tmp_root/zy-layout.XXXXXX")"
+layout_file="$layout_dir/layout.kdl"
+trap 'rm -rf "$layout_dir"' EXIT
+
+{
+  echo "layout {"
+  echo '    pane split_direction="vertical" {'
+  for ((i = 1; i <= agy_count; i++)); do
+    echo '        pane command="agy" {'
+    echo '            args "--dangerously-skip-permissions"'
+    echo "        }"
+  done
+  echo "        pane"
+  echo "    }"
+  echo '    pane size=1 borderless=true {'
+  echo '        plugin location="status-bar"'
+  echo "    }"
+  echo "}"
+} > "$layout_file"
+
+"$zellij_bin" --new-session-with-layout "$layout_file" "$@"

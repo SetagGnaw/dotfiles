@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# zag-into <repo> <task...>
+#
+# Dispatch a background Claude Code session ROOTED IN a sibling repo, so the
+# session shows up in *that* repo's agent view (`zag`, i.e. `claude agents
+# --cwd <repo>`) instead of the current repo's.
+#
+# Use it for cross-repo work: rather than editing a sibling repo's files from
+# the current session (which keeps the work filed under the current repo), hand
+# that slice to its own agent rooted in the sibling. Claude auto-isolates the
+# dispatched session into <repo>/.claude/worktrees/<id> before it edits, and
+# that worktree still counts as belonging to <repo> for `claude agents --cwd`.
+#
+#   <repo>   sibling repo name (resolved against the current repo's parent dir)
+#            or an explicit path to a git repo.
+#   <task>   the prompt for the dispatched session (everything after <repo>).
+#
+# Env:
+#   ZAG_INTO_NAME   override the auto-derived session name shown in agent view.
+set -euo pipefail
+
+if [[ $# -lt 2 ]]; then
+  echo "usage: zag-into <repo> <task...>" >&2
+  exit 2
+fi
+
+repo="$1"; shift
+task="$*"
+
+# Resolve the current repo's main root (works even from inside a worktree), so
+# sibling lookup uses the repo's real parent, not $PWD's parent.
+parent="$(dirname "$PWD")"
+if common_git="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+  parent="$(dirname "$(dirname "$common_git")")"
+fi
+
+# Locate <repo>: an explicit path wins, otherwise a sibling under $parent.
+if [[ -e "$repo/.git" ]]; then
+  target="$repo"
+elif [[ -e "$parent/$repo/.git" ]]; then
+  target="$parent/$repo"
+else
+  echo "zag-into: cannot find repo '$repo' (no such path, and no sibling under $parent)" >&2
+  exit 1
+fi
+target="$(cd "$target" && pwd)"
+
+if ! git -C "$target" rev-parse --git-dir >/dev/null 2>&1; then
+  echo "zag-into: '$target' is not a git repository" >&2
+  exit 1
+fi
+
+name="${ZAG_INTO_NAME:-${task:0:40}}"
+
+echo "zag-into: dispatching → $target"
+echo "          view it with: (cd $target && zag)"
+( cd "$target" && exec claude --bg --name "$name" "$task" )

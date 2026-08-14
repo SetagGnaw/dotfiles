@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if command -v zellij >/dev/null 2>&1; then
+  zellij_bin="$(command -v zellij)"
+elif [[ -x /opt/homebrew/opt/zellij/bin/zellij ]]; then
+  zellij_bin="/opt/homebrew/opt/zellij/bin/zellij"
+else
+  echo "zag: zellij not found on PATH" >&2
+  exit 127
+fi
+
+export SHELL_SESSIONS_DISABLE=1
+unset ZELLIJ ZELLIJ_PANE_ID ZELLIJ_SESSION_NAME
+
+agent_count=1
+if [[ $# -gt 0 && $1 =~ ^[0-9]+$ ]]; then
+  agent_count=$((10#$1))
+  shift
+fi
+
+if (( agent_count < 1 )); then
+  echo "zag: agent count must be at least 1" >&2
+  exit 2
+fi
+
+# Narrow `claude agents` to the directory zag was launched from, and label the
+# panes with its last component (agent panes run `claude agents`, not a shell,
+# so the chpwd pane-title hook never fires for them).
+cwd="$PWD"
+cwd_name="${cwd##*/}"
+
+tmp_root="${TMPDIR:-/tmp}"
+tmp_root="${tmp_root%/}"
+layout_dir="$(mktemp -d "$tmp_root/zag-layout.XXXXXX")"
+layout_file="$layout_dir/layout.kdl"
+trap 'rm -rf "$layout_dir"' EXIT
+
+# A zellij stack (Ctrl+p then s): the claude agent view(s) (`claude agents`)
+# stacked together with a normal shell named "terminal" at the bottom.
+{
+  echo "layout {"
+  echo '    pane stacked=true {'
+  for ((i = 1; i <= agent_count; i++)); do
+    echo "        pane name=\"$cwd_name\" command=\"claude\" {"
+    echo "            args \"agents\" \"--cwd\" \"$cwd\""
+    echo "        }"
+  done
+  echo '        pane name="terminal"'
+  echo "    }"
+  echo '    pane size=1 borderless=true {'
+  echo '        plugin location="status-bar"'
+  echo "    }"
+  echo "}"
+} > "$layout_file"
+
+"$zellij_bin" --new-session-with-layout "$layout_file" "$@"

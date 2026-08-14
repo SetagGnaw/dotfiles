@@ -1,0 +1,42 @@
+#!/bin/zsh
+# Update the AI CLIs (claude, codex, agy) to their latest versions.
+# Run daily by launchd (com.gateswang.ai-cli-update); helpers in system/automation.zsh.
+# Logs to ~/Library/Logs/ai-cli-update.log via launchd stdout/stderr redirection.
+
+setopt null_glob
+
+# launchd starts with a minimal PATH. Rebuild it from path.txt exactly like
+# .zshrc does, so claude/npm/codex/agy resolve to the same binaries as in
+# interactive shells (nvm node bin comes from path.txt, not nvm.sh).
+# ~/.local/bin goes in front like .zshrc does, so codex/agy resolve there
+# rather than to any stale npm-installed copies in the nvm bin.
+path=(${(f)"$(<$HOME/Config/path.txt)"} $path)
+export PATH="$HOME/.local/bin:$PATH"
+
+log() { print "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+log "=== AI CLI update run ==="
+
+# Claude Code
+log "claude $(claude --version 2>&1)"
+if ! claude update; then
+  # npm rename can leave a stale install dir; clear it and reinstall
+  # (same recovery as cre in ai/claude.zsh)
+  log "claude update failed, reinstalling via npm"
+  root="$(npm root -g 2>/dev/null)/@anthropic-ai"
+  [[ -d "$root" ]] && rm -rf "$root/claude-code" "$root"/.claude-code-*
+  npm install -g @anthropic-ai/claude-code
+fi
+log "claude now $(claude --version 2>&1)"
+
+# Codex
+log "codex $(codex --version 2>&1)"
+codex update
+log "codex now $(codex --version 2>&1)"
+
+# Antigravity
+log "agy $(agy --version 2>&1)"
+agy update
+log "agy now $(agy --version 2>&1)"
+
+log "=== done ==="

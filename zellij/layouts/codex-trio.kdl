@@ -1,0 +1,37 @@
+layout {
+    pane split_direction="vertical" {
+        pane name="codex" command="codex" {
+            args "--ask-for-approval" "never" "--sandbox" "danger-full-access"
+        }
+        pane
+    }
+
+    // All variants keep `codex` pinned to the leftmost column; only the
+    // codex/right-pane width ratio changes.
+    swap_tiled_layout name="even" {
+        tab {
+            pane split_direction="vertical" {
+                pane name="codex" size="50%"
+                pane size="50%"
+            }
+        }
+    }
+
+    swap_tiled_layout name="codex-wide" {
+        tab {
+            pane split_direction="vertical" {
+                pane name="codex" size="70%"
+                pane size="30%"
+            }
+        }
+    }
+
+    swap_tiled_layout name="codex-narrow" {
+        tab {
+            pane split_direction="vertical" {
+                pane name="codex" size="30%"
+                pane size="70%"
+            }
+        }
+    }
+}

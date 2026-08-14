@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.gateswang.zellij-bak-sweeper</string>
+    <key>WatchPaths</key>
+    <array>
+        <string>/Users/gateswang/Config/zellij</string>
+    </array>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>cd /Users/gateswang/Config/zellij &amp;&amp; mkdir -p backups &amp;&amp; find . -maxdepth 1 -name 'config.kdl.bak*' -exec mv {} backups/ \;</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>

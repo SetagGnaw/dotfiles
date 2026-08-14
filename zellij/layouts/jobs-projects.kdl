@@ -1,0 +1,90 @@
+// Static jobs-projects layout
+env {
+    ZJ_HIDE_PROMPT 1
+    SHELL_SESSIONS_DISABLE 1
+}
+layout {
+    tab name="jobs-projects" cwd="/Users/gateswang/Programming/repos/projects/01-old_projects" {
+        pane split_direction="vertical" {
+            pane split_direction="horizontal" {
+                pane name="findcompanies" cwd="findcompanies"
+                pane name="findjobs" cwd="findjobs"
+                pane name="applyjobs" cwd="applyjobs"
+                pane name="viewjobs" cwd="viewjobs"
+                pane name="dev-tools" cwd="dev-tools"
+            }
+            pane split_direction="horizontal" {
+                pane name="jobs-db" cwd="jobs-db"
+                pane name="jobs-shared" cwd="jobs-shared"
+                pane name="jobs-db-dashboard" cwd="jobs-db-dashboard"
+                pane name="scheduler" cwd="scheduler"
+                pane name="jobs-ai-shared" cwd="jobs-ai-shared"
+            }
+        }
+    }
+
+    swap_tiled_layout name="2-cols" {
+        tab {
+            pane split_direction="vertical" {
+                pane split_direction="horizontal" {
+                    pane name="findcompanies"
+                    pane name="findjobs"
+                    pane name="applyjobs"
+                    pane name="viewjobs"
+                    pane name="dev-tools"
+                }
+                pane split_direction="horizontal" {
+                    pane name="jobs-db"
+                    pane name="jobs-shared"
+                    pane name="jobs-db-dashboard"
+                    pane name="scheduler"
+                    pane name="jobs-ai-shared"
+                }
+            }
+        }
+    }
+
+    swap_tiled_layout name="5-cols" {
+        tab {
+            pane split_direction="vertical" {
+                pane split_direction="horizontal" {
+                    pane name="findcompanies"
+                    pane name="jobs-db"
+                }
+                pane split_direction="horizontal" {
+                    pane name="findjobs"
+                    pane name="jobs-shared"
+                }
+                pane split_direction="horizontal" {
+                    pane name="applyjobs"
+                    pane name="jobs-db-dashboard"
+                }
+                pane split_direction="horizontal" {
+                    pane name="viewjobs"
+                    pane name="scheduler"
+                }
+                pane split_direction="horizontal" {
+                    pane name="dev-tools"
+                    pane name="jobs-ai-shared"
+                }
+            }
+        }
+    }
+
+    swap_tiled_layout name="stacked" {
+        tab {
+            pane stacked=true {
+                pane name="findcompanies"
+                pane name="findjobs"
+                pane name="applyjobs"
+                pane name="viewjobs"
+                pane name="dev-tools"
+                pane name="jobs-db"
+                pane name="jobs-shared"
+                pane name="jobs-db-dashboard"
+                pane name="scheduler"
+                pane name="jobs-ai-shared"
+            }
+        }
+    }
+}
