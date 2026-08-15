@@ -114,7 +114,15 @@ fpath=(${(f)"$(<$HOME/Config/fpath.txt)"} $fpath)
 # Break zellij env inheritance into grandchild shells (e.g. VS Code / Cursor
 # terminals launched from a zellij pane). Otherwise ZELLIJ and ZJ_HIDE_PROMPT
 # survive across the process boundary and confuse zellij-specific hooks below.
-if [[ ${TERM_PROGRAM:-} == "vscode" && -n ${ZELLIJ:-} ]]; then
+# TERM_PROGRAM=vscode alone is not the signal: a zellij server started from a
+# VS Code terminal hands it to every real pane too. A shell VS Code itself
+# spawned has VSCODE_SHELL_INTEGRATION set (unexported, by its injected rc
+# before it sources this file) or the editor's pty host ("Code Helper" /
+# "Cursor Helper") as its parent process; a real pane's parent is the zellij
+# server.
+if [[ ${TERM_PROGRAM:-} == "vscode" && -n ${ZELLIJ:-} ]] \
+   && { [[ -n ${VSCODE_SHELL_INTEGRATION:-} ]] \
+        || [[ "$(ps -o comm= -p "$PPID" 2>/dev/null)" == *" Helper"* ]]; }; then
   unset ZELLIJ ZELLIJ_PANE_ID ZELLIJ_SESSION_NAME ZJ_HIDE_PROMPT
 fi
 
@@ -202,7 +210,6 @@ source "$config_dir/system/automation.zsh"
 source "$config_dir/build-tools.zsh"
 
 # AI CLIs
-source "$config_dir/genai/gemini.zsh"
 source "$config_dir/genai/codex.zsh"
 source "$config_dir/genai/antigravity.zsh"
 source "$config_dir/genai/openclaw.zsh"
@@ -229,11 +236,11 @@ path=(${path:#/Applications/Cursor.app/Contents/Resources/app/bin})
 export PATH="$HOME/.moon/bin:$PATH"
 eval "$(direnv hook zsh)"
 
-# Blank the prompt only inside a "real" zellij pane (TTY connected to the
-# zellij server), not in grandchild shells launched from one (e.g. VS Code /
-# Cursor terminals that inherit ZELLIJ + ZJ_HIDE_PROMPT through their parent
-# process env).
-if [[ -n ${ZELLIJ:-} && -n ${ZJ_HIDE_PROMPT:-} && ${TERM_PROGRAM:-} != "vscode" ]]; then
+# Blank the prompt only inside a "real" zellij pane. Grandchild shells
+# launched from one (VS Code / Cursor terminals) already had ZELLIJ and
+# ZJ_HIDE_PROMPT unset above, so no TERM_PROGRAM test is needed here (it
+# would also exclude real panes of a zellij server started from VS Code).
+if [[ -n ${ZELLIJ:-} && -n ${ZJ_HIDE_PROMPT:-} ]]; then
   PROMPT=''
   RPROMPT=''
   PROMPT2=''

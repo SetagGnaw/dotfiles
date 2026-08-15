@@ -60,7 +60,7 @@ function ghdelete(){
   read "choices?Select repos to delete (numbers separated by spaces): "
   local selected=()
   for choice in ${=choices}; do
-    if [[ "$choice" -ge 1 ]] && [[ "$choice" -le ${#repos[@]} ]] 2>/dev/null; then
+    if [[ "$choice" == <1-> ]] && (( choice <= ${#repos[@]} )); then
       selected+=("${repos[$choice]}")
     else
       echo "Skipping invalid selection: $choice"
@@ -107,16 +107,23 @@ function ghcreate(){
     gh repo create "$1" --private --source=. --remote=upstream
     git push --set-upstream upstream "$(git branch --show-current)"
   else
-    local template_dir="$HOME/Config/templates"
+    local template_dir="$HOME/Config/.templates"
+    if [[ ! -f "$template_dir/.gitignore" || ! -f "$template_dir/LICENSE" ]]; then
+      echo "ghcreate: missing $template_dir/.gitignore or LICENSE" >&2
+      return 1
+    fi
 
     echo "# $1" > README.md
-    cp "$template_dir/.gitignore" .gitignore
-    sed -e "s/YEAR/$(date +%Y)/" -e "s/AUTHOR/$(git config user.name)/" "$template_dir/LICENSE" > LICENSE
+    cp "$template_dir/.gitignore" .gitignore || return 1
+    # Anchored to the copyright line: an unanchored s/AUTHOR/ would also hit
+    # "AUTHORS OR COPYRIGHT HOLDERS" in the MIT text.
+    local author; author=$(git config user.name)
+    author=${author//\\/\\\\}; author=${author//\//\\/}; author=${author//&/\\&}
+    sed -e "s/^Copyright (c) YEAR AUTHOR\$/Copyright (c) $(date +%Y) $author/" \
+      "$template_dir/LICENSE" > LICENSE || { rm -f LICENSE; return 1; }
 
-    git init -b main
-    git add -A
-    git commit -m "initial commit"
-    gh repo create "$1" --private --source=. --remote=upstream
+    git init -b main && git add -A && git commit -m "initial commit" || return 1
+    gh repo create "$1" --private --source=. --remote=upstream || return 1
     git push --set-upstream upstream main
   fi
 }
@@ -140,7 +147,9 @@ function ghop(){
 
   local remote nwo
   local repo_args=()
-  if [[ "$*" != *-R* && "$*" != *--repo* ]]; then
+  # Only skip resolution for an actual -R/--repo flag (also -Rowner/repo and
+  # --repo=owner/repo), not for arguments that merely contain "-R".
+  if (( ! ${@[(I)-R*]} && ! ${@[(I)--repo]} && ! ${@[(I)--repo=*]} )); then
     for remote in origin upstream; do
       git remote get-url "$remote" >/dev/null 2>&1 && break
       remote=

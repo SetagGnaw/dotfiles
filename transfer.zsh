@@ -79,20 +79,29 @@ send() {
   fi
 
   local last=${@[-1]} dest sources host
-  if [[ $last == *:* || $last == :* ]]; then
+  if [[ $last == *:* ]]; then
     dest=$(_transfer_resolve "$last") || return 1
+    sources=("${@[1,-2]}")
+  elif [[ $last == *@* && $last != */* && ! -e $last ]]; then
+    # Bare user@host override (no :path); only when it is not an existing
+    # local path, so files like icon@2x.png still count as sources.
+    host=$last
+    dest="${host}:shared/"
     sources=("${@[1,-2]}")
   else
     host=$(_transfer_require_host) || return 1
     dest="${host}:shared/"
     sources=("$@")
-    ssh "$host" 'mkdir -p ~/shared' || return 1
   fi
 
   if [[ ${#sources[@]} -eq 0 ]]; then
     echo "send: no source files" >&2
     return 1
   fi
+
+  # Only the ~/shared destinations set $host; contact the remote after the
+  # local checks passed.
+  [[ -n $host ]] && { ssh "$host" 'mkdir -p ~/shared' || return 1; }
 
   scp "${sources[@]}" "$dest"
 }
@@ -105,20 +114,27 @@ sendr() {
   fi
 
   local last=${@[-1]} dest sources host
-  if [[ $last == *:* || $last == :* ]]; then
+  if [[ $last == *:* ]]; then
     dest=$(_transfer_resolve "$last") || return 1
+    sources=("${@[1,-2]}")
+  elif [[ $last == *@* && $last != */* && ! -e $last ]]; then
+    # Bare user@host override (no :path); only when it is not an existing
+    # local path, so files like icon@2x.png still count as sources.
+    host=$last
+    dest="${host}:shared/"
     sources=("${@[1,-2]}")
   else
     host=$(_transfer_require_host) || return 1
     dest="${host}:shared/"
     sources=("$@")
-    ssh "$host" 'mkdir -p ~/shared' || return 1
   fi
 
   if [[ ${#sources[@]} -eq 0 ]]; then
     echo "sendr: no source paths" >&2
     return 1
   fi
+
+  [[ -n $host ]] && { ssh "$host" 'mkdir -p ~/shared' || return 1; }
 
   rsync -avzP "${sources[@]}" "$dest"
 }

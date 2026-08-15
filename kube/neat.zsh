@@ -81,9 +81,14 @@ kn() {
   resource_type=$(kubectl api-resources --no-headers --verbs=get 2>/dev/null \
     | awk '{print $1}' \
     | _kf_fzf --header="Neat: select resource type") || return
+  # Fetch with headers: cluster-scoped kinds have no NAMESPACE column even
+  # with -A, so drop -A for them or the wrong column would be taken as the name.
+  local out
+  out=$(kubectl get "$resource_type" ${=ns} 2>/dev/null) || return
+  [[ "$ns" == "-A" && "${out%%[[:space:]]*}" != "NAMESPACE" ]] && ns=""
   local -a sels
-  sels=("${(@f)$(kubectl get "$resource_type" ${=ns} --no-headers 2>/dev/null \
-    | _kf_fzf --multi --header="Neat: select $resource_type  [$ns]  (TAB multi-select)")}" ) || return
+  sels=("${(@f)$(printf '%s\n' "$out" | tail -n +2 \
+    | _kf_fzf --multi --header="Neat: select $resource_type  [${ns:-cluster}]  (TAB multi-select)")}" ) || return
   {
     local first=1
     for sel in "${sels[@]}"; do

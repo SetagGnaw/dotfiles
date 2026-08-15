@@ -164,11 +164,7 @@ keybinds clear-defaults=true {
         bind "Alt =" { Resize "Increase"; }
         bind "Alt [" { PreviousSwapLayout; }
         bind "Alt ]" { NextSwapLayout; }
-        bind "Alt e" {
-            Run "gemini" {
-                direction "left"
-            }
-        }
+        // Alt+e freed — was Run "gemini" (Gemini CLI removed from this config).
         // Alt+f freed — was ToggleFloatingPanes; removed to stop accidental
         // floating-pane toggles next to the Alt-movement keys. Still available
         // via pane mode (Ctrl+p then w).

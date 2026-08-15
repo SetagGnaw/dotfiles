@@ -49,12 +49,14 @@ _cdel_preview() {
 
 # Interactively delete sessions (tab = multi-select)
 cdel() {
-  local project_dir="$HOME/.claude/projects/$(
-    pwd | sed 's|/|-|g'
-  )"
+  # Claude maps every non-alphanumeric character of the cwd (not just '/')
+  # to '-' for the project dir name.
+  local project_dir="$HOME/.claude/projects/${PWD//[^A-Za-z0-9]/-}"
   local selected
+  # -maxdepth 1: session transcripts are top-level; deeper *.jsonl files are
+  # subagent/workflow transcripts, not sessions.
   selected=$(
-    find "$project_dir" -name "*.jsonl" -print0 2>/dev/null \
+    find "$project_dir" -maxdepth 1 -name "*.jsonl" -print0 2>/dev/null \
       | xargs -0 ls -t \
       | awk '{print NR"\t"$0}' \
       | fzf --multi \
@@ -65,7 +67,12 @@ cdel() {
           --preview-window=right:55%
   )
   [[ -z "$selected" ]] && return
-  echo "$selected" | awk -F'\t' '{print $2}' | xargs rm
+  # Also remove the session's sibling data dir (<uuid>/: tool-results, subagents, ...)
+  local f
+  echo "$selected" | awk -F'\t' '{print $2}' | while IFS= read -r f; do
+    rm -f "$f"
+    rm -rf "${f%.jsonl}"
+  done
   echo "Deleted $(echo "$selected" | wc -l | tr -d ' ') session(s)"
 }
 

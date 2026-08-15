@@ -5,19 +5,19 @@ function freedisk() {
   # Homebrew
   echo "\n--- Homebrew ---"
   if command -v brew &>/dev/null; then
-    brew cleanup -s 2>/dev/null || true && echo "brew: cleaned"
+    brew cleanup -s 2>/dev/null && echo "brew: cleaned" || echo "brew: failed"
   fi
 
   # pip
   echo "\n--- pip ---"
   if command -v pip3 &>/dev/null; then
-    pip3 cache purge 2>/dev/null || true && echo "pip: cleaned"
+    pip3 cache purge 2>/dev/null && echo "pip: cleaned" || echo "pip: failed"
   fi
 
   # uv
   echo "\n--- uv ---"
   if command -v uv &>/dev/null; then
-    uv cache prune --ci 2>/dev/null || true && echo "uv: pruned"
+    uv cache prune --ci 2>/dev/null && echo "uv: pruned" || echo "uv: failed"
   fi
 
   # Python __pycache__ under home (top-level projects)
@@ -29,7 +29,7 @@ function freedisk() {
   # npm
   echo "\n--- npm ---"
   if command -v npm &>/dev/null; then
-    npm cache clean --force 2>/dev/null || true && echo "npm: cleaned"
+    npm cache clean --force 2>/dev/null && echo "npm: cleaned" || echo "npm: failed"
   fi
 
   # # npkill (interactive node_modules cleaner)
@@ -57,30 +57,37 @@ function freedisk() {
   # Docker (if running)
   echo "\n--- Docker ---"
   if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
-    docker system prune -f 2>/dev/null || true && echo "docker: pruned"
+    docker system prune -f 2>/dev/null && echo "docker: pruned" || echo "docker: failed"
     docker system prune -a --volumes
   fi
 
   # gem (user-level only, skip system Ruby)
   echo "\n--- gem ---"
   if command -v gem &>/dev/null; then
-    gem cleanup --user-install 2>/dev/null || true && echo "gem: cleaned"
+    gem cleanup --user-install 2>/dev/null && echo "gem: cleaned" || echo "gem: failed"
   fi
 
   # cargo
   echo "\n--- cargo ---"
   if command -v cargo &>/dev/null; then
-    cargo cache --autoclean 2>/dev/null || true && echo "cargo: cleaned" \
-      || { rm -rf ~/.cargo/registry/cache 2>/dev/null || true && echo "cargo registry cache: cleared"; }
+    # cargo-cache is a separate subcommand; fall back to clearing the registry
+    # cache by hand when it is not installed.
+    if cargo cache --autoclean 2>/dev/null; then
+      echo "cargo: cleaned"
+    elif rm -rf ~/.cargo/registry/cache 2>/dev/null; then
+      echo "cargo registry cache: cleared"
+    else
+      echo "cargo: failed"
+    fi
   fi
 
   # go
   echo "\n--- go ---"
   if command -v go &>/dev/null; then
-    go clean -cache 2>/dev/null || true && echo "go build cache: cleaned"
-    go clean -testcache 2>/dev/null || true && echo "go test cache: cleaned"
-    go clean -modcache 2>/dev/null || true && echo "go module cache: cleaned"
-    go clean -fuzzcache 2>/dev/null || true && echo "go fuzz cache: cleaned"
+    go clean -cache 2>/dev/null && echo "go build cache: cleaned" || echo "go build cache: failed"
+    go clean -testcache 2>/dev/null && echo "go test cache: cleaned" || echo "go test cache: failed"
+    go clean -modcache 2>/dev/null && echo "go module cache: cleaned" || echo "go module cache: failed"
+    go clean -fuzzcache 2>/dev/null && echo "go fuzz cache: cleaned" || echo "go fuzz cache: failed"
   fi
 
   # git: gc all repos under home (top-level only to avoid deep recursion)
@@ -93,7 +100,7 @@ function freedisk() {
   # Xcode derived data
   echo "\n--- Xcode DerivedData ---"
   if [ -d ~/Library/Developer/Xcode/DerivedData ]; then
-    rm -rf ~/Library/Developer/Xcode/DerivedData/* 2>/dev/null || true && echo "Xcode DerivedData: cleared"
+    rm -rf ~/Library/Developer/Xcode/DerivedData/*(N) 2>/dev/null && echo "Xcode DerivedData: cleared" || echo "Xcode DerivedData: failed"
   fi
 
   local after=$(df -h / | tail -1)

@@ -31,10 +31,18 @@ alertstatus(){
 
 # node exporter
 nodestart_helper(){
-    cd /Users/gateswang/Programming/Learning/prometheus/node_exporter
-    ./node_exporter --web.listen-address 127.0.0.1:8081 2>&1 &
-    ./node_exporter --web.listen-address 127.0.0.1:8082 2>&1 &
-    ./node_exporter --web.listen-address 127.0.0.1:9100 2>&1 &
+    local dir=/Users/gateswang/Programming/Learning/prometheus/node_exporter
+    if [[ ! -x "$dir/node_exporter" ]]; then
+        print -u2 "nodestart: $dir/node_exporter not found"
+        return 1
+    fi
+    # Subshell: do not leak the cd into the interactive shell.
+    (
+        cd "$dir" || exit 1
+        ./node_exporter --web.listen-address 127.0.0.1:8081 2>&1 &
+        ./node_exporter --web.listen-address 127.0.0.1:8082 2>&1 &
+        ./node_exporter --web.listen-address 127.0.0.1:9100 2>&1 &
+    )
 }
 nodestart(){
     nodestart_helper 2>&1 &

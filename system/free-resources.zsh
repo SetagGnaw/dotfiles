@@ -152,7 +152,7 @@ function resources() {
   echo "\n=== Memory ==="
   top -l 1 -n 0 | grep -E "^(PhysMem|VM)"
   echo "\n=== Swap ==="
-  sysctl vm.swapusage | awk -F'= ' '{print $2}'
+  sysctl -n vm.swapusage
   echo "\n=== Disk ==="
   df -h / | tail -1
   echo "\n=== Process count ==="

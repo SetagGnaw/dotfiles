@@ -31,29 +31,45 @@ _kf_ns() {
 # Usage: _kf_save_or_print <content-producing-command...>
 # e.g.:  _kf_save_or_print kubectl get pod foo -o yaml | kubectl neat
 _kf_save() {
-  local outfile
-  echo -n "Save to file [output.yaml]: " > /dev/tty; read outfile < /dev/tty
-  outfile="${outfile:-output.yaml}"
-  if [[ "$outfile" == "-" ]]; then
-    cat
-  else
-    cat > "$outfile"
-    echo "Saved to $outfile" > /dev/tty
-  fi
+  local tmp outfile
+  # Consume stdin before prompting: while the producer (kubectl/fzf) is still
+  # running it owns the terminal's foreground process group, and `read` from
+  # /dev/tty fails immediately (EIO) with an empty answer.
+  tmp=$(mktemp) || return 1
+  {
+    cat > "$tmp"
+    echo -n "Save to file [output.yaml]: " > /dev/tty; read outfile < /dev/tty
+    outfile="${outfile:-output.yaml}"
+    if [[ "$outfile" == "-" ]]; then
+      cat "$tmp"
+    else
+      cat "$tmp" > "$outfile"
+      echo "Saved to $outfile" > /dev/tty
+    fi
+  } always {
+    # Runs on every exit path, including Ctrl-C at the prompt, so buffered
+    # manifests (possibly Secrets) never linger in $TMPDIR.
+    rm -f "$tmp"
+  }
 }
 
 # Fuzzy image picker — shows locally available Docker images as suggestions
 # User can filter/select a local image or type a custom one (e.g. registry path)
 # Returns the selected or typed image via stdout
 _kf_pick_image() {
-  local images
+  local images out
   images=$(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null \
     | grep -v '<none>' | sort -u)
-  # --print-query: always print the query on line 1, selected item on line 2
-  # tail -1 gives the selection if chosen, or the typed query if no match selected
-  echo "$images" \
-    | _kf_fzf --print-query --header="Image: select local Docker image or type custom" \
-    | tail -1
+  # --print-query: query on line 1, selection on line 2 (only when Enter
+  # accepts a match). Ctrl-Y prints the typed query alone, so a custom image
+  # that fuzzy-matches a local one (redis vs redis:7) can still be entered.
+  out=$(print -r -- "$images" | _kf_fzf --print-query \
+        --header="Image: select local image, or type custom (Ctrl-Y = use typed text)" \
+        --bind 'ctrl-y:print-query')
+  local st=$?
+  # fzf exits 1 on a no-match Enter, which is the legitimate custom-image path
+  (( st == 130 )) && return 130
+  print -r -- "${out##*$'\n'}"
 }
 
 # Confirm prompt defaulting to yes — returns 1 only if user types n/N

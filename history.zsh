@@ -4,9 +4,13 @@
 # options override) and before completion.zsh, whose `fzf --zsh` must be the
 # last thing to bind ^R.
 
-export HISTSIZE=10000 #set history size
-export SAVEHIST=10000 #save history after logout
-export HISTFILE=~/.zhistory #history file
+# Not exported (+x also drops an inherited export): these are zsh-only, and an
+# interactive bash/sh child that inherits HISTFILE would read this file and
+# append plain lines to it that the helpers below cannot parse. -g so a
+# re-source from inside a function (rz) does not make them locals.
+typeset -g +x HISTSIZE=10000 #set history size
+typeset -g +x SAVEHIST=10000 #save history after logout
+typeset -g +x HISTFILE=$HOME/.zhistory #history file
 setopt INC_APPEND_HISTORY #append into history file
 setopt HIST_IGNORE_DUPS #save only one command if 2 common are same and consistent
 setopt EXTENDED_HISTORY #add timestamp for each entry
@@ -39,6 +43,8 @@ typeset -g  __history_last_saved=
 typeset -gi __history_line_executed=0
 typeset -gi __history_initialized=0
 typeset -g  __history_autosuggest_ignore_base=${ZSH_AUTOSUGGEST_HISTORY_IGNORE-}
+# $? after Ctrl-Z is 128+SIGTSTP; the command did not fail, it is suspended.
+typeset -gi __history_tstp_status=$(( 128 + ${signals[(i)TSTP]} - 1 ))
 
 __history_capture_line() {
   emulate -L zsh -o extendedglob
@@ -73,7 +79,7 @@ __history_save_successful_command() {
   # A new line was entered, so the previous lingering entry is gone by now.
   ZSH_AUTOSUGGEST_HISTORY_IGNORE=$__history_autosuggest_ignore_base
 
-  if (( exit_code != 0 )); then
+  if (( exit_code != 0 && exit_code != __history_tstp_status )); then
     # The failed line still lingers in $history until the next command line;
     # hide exactly that text from zsh-autosuggestions in the meantime.
     ZSH_AUTOSUGGEST_HISTORY_IGNORE="${__history_autosuggest_ignore_base:+${__history_autosuggest_ignore_base}|}${(b)cmd}"
@@ -95,24 +101,46 @@ add-zsh-hook preexec __history_mark_line_executed
 add-zsh-hook precmd __history_save_successful_command
 
 __history_entry_is_valid() {
-  emulate -L zsh
+  emulate -L zsh -o extendedglob
 
   local command_text=${1##[[:space:]]#}
   local -a words
   local word
+  local -i i=1
 
   words=(${(z)command_text}) || return 1
 
-  for word in $words; do
-    if [[ $word == [A-Za-z_][A-Za-z0-9_]*=* ]]; then
+  while (( i <= ${#words} )); do
+    word=${words[i]}
+
+    # Leading assignments. (z) splits an array value `A=(1 2)` into
+    # `A=(` `1` `2` `)`, so skip through the closing paren.
+    if [[ $word == [A-Za-z_][A-Za-z0-9_]#=\(* ]]; then
+      while (( i <= ${#words} )) && [[ ${words[i]} != ')' ]]; do
+        (( ++i ))
+      done
+      (( ++i ))
+      continue
+    fi
+    if [[ $word == [A-Za-z_][A-Za-z0-9_]#=* ]]; then
+      (( ++i ))
       continue
     fi
 
     case $word in
-      ('{'|'('|'[['|'!')
+      ('{'|'('|'[['|'!'|'(('*)
+        return 0
+        ;;
+      ('$'*|'"$'*|'`'*)
+        # Command name comes from an expansion: cannot verify statically.
         return 0
         ;;
     esac
+
+    # `\cmd` bypasses aliases and `=cmd` is a PATH lookup: both run `cmd`.
+    # A leading `~/` resolves like the shell would.
+    word=${word#(\\|=)}
+    [[ $word == '~/'* ]] && word=$HOME/${word#'~/'}
 
     whence -w -- "$word" >/dev/null 2>&1
     return $?
@@ -141,8 +169,8 @@ history-list-invalid() {
       if [[ -n $entry ]]; then
         command_text=${entry#*;}
         if ! __history_entry_is_valid "$command_text"; then
-          print -- "$command_text"
-          (( invalid_count++ ))
+          print -r -- "$command_text"
+          (( ++invalid_count ))
         fi
       fi
       entry=$line
@@ -154,8 +182,8 @@ history-list-invalid() {
   if [[ -n $entry ]]; then
     command_text=${entry#*;}
     if ! __history_entry_is_valid "$command_text"; then
-      print -- "$command_text"
-      (( invalid_count++ ))
+      print -r -- "$command_text"
+      (( ++invalid_count ))
     fi
   fi
 
@@ -186,6 +214,9 @@ history-prune-invalid() {
   fi
 
   command cp -p "$histfile" "$backup" || return 1
+  # Pre-create the temp file as a copy so it keeps the history file's mode
+  # (zsh creates it 0600); `>|` truncates without changing the mode.
+  command cp -p "$histfile" "$tmp" || return 1
 
   {
     while IFS= read -r line || [[ -n $line ]]; do
@@ -195,7 +226,7 @@ history-prune-invalid() {
           if __history_entry_is_valid "$command_text"; then
             print -r -- "$entry"
           else
-            (( removed_count++ ))
+            (( ++removed_count ))
           fi
         fi
         entry=$line
@@ -209,7 +240,7 @@ history-prune-invalid() {
       if __history_entry_is_valid "$command_text"; then
         print -r -- "$entry"
       else
-        (( removed_count++ ))
+        (( ++removed_count ))
       fi
     fi
   } >| "$tmp" || {
@@ -255,8 +286,8 @@ history-list-match() {
       if [[ -n $entry ]]; then
         command_text=${entry#*;}
         if [[ $command_text == *"$needle"* ]]; then
-          print -- "$command_text"
-          (( match_count++ ))
+          print -r -- "$command_text"
+          (( ++match_count ))
         fi
       fi
       entry=$line
@@ -268,8 +299,8 @@ history-list-match() {
   if [[ -n $entry ]]; then
     command_text=${entry#*;}
     if [[ $command_text == *"$needle"* ]]; then
-      print -- "$command_text"
-      (( match_count++ ))
+      print -r -- "$command_text"
+      (( ++match_count ))
     fi
   fi
 
@@ -299,6 +330,9 @@ history-prune-match() {
   fi
 
   command cp -p "$histfile" "$backup" || return 1
+  # Pre-create the temp file as a copy so it keeps the history file's mode
+  # (zsh creates it 0600); `>|` truncates without changing the mode.
+  command cp -p "$histfile" "$tmp" || return 1
 
   {
     while IFS= read -r line || [[ -n $line ]]; do
@@ -306,7 +340,7 @@ history-prune-match() {
         if [[ -n $entry ]]; then
           command_text=${entry#*;}
           if [[ $command_text == *"$needle"* ]]; then
-            (( removed_count++ ))
+            (( ++removed_count ))
           else
             print -r -- "$entry"
           fi
@@ -320,7 +354,7 @@ history-prune-match() {
     if [[ -n $entry ]]; then
       command_text=${entry#*;}
       if [[ $command_text == *"$needle"* ]]; then
-        (( removed_count++ ))
+        (( ++removed_count ))
       else
         print -r -- "$entry"
       fi

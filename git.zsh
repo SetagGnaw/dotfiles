@@ -1,4 +1,7 @@
 # gra <url> [remote=origin] — add remote and set as upstream for pull/push
+# Oh My Zsh's git plugin defines `alias gra='git remote add'`, which would
+# shadow this function (aliases expand before function lookup).
+unalias gra 2>/dev/null
 function gra(){
     local remote=${2:-origin}
     git remote add $remote $1

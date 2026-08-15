@@ -19,9 +19,21 @@ _k() {
   _kubectl
 }
 
-# Force _kubectl fpath file to load no (it re-runs "compdef _kubectl kubectl" on first call,
-# which would silently clobber our override below). Loading it eagerly prevents that.
-autoload +X _kubectl 2>/dev/null
+# kubectl's generated completion (custom/completions/_kubectl, see
+# docs/completion.md) is a whole-file autoload body: on its first call it runs
+# "compdef _kubectl kubectl", which would silently clobber the override below,
+# and only then defines the real _kubectl. `autoload +X` alone only loads that
+# body, so run it once now at top level (its funcstack guard keeps it from
+# completing anything): the real _kubectl exists and the compdef below wins.
+# Skipped on re-source, when _kubectl is already the real function.
+if (( $+commands[kubectl] )) && \
+   [[ ${+functions[_kubectl]} -eq 0 || $functions[_kubectl] == *'builtin autoload -X'* ]]; then
+  if autoload +X _kubectl 2>/dev/null; then
+    eval "$functions[_kubectl]"
+  else
+    print -u2 "kube/core.zsh: _kubectl not in fpath; run: kubectl completion zsh > ~/.oh-my-zsh/custom/completions/_kubectl"
+  fi
+fi
 compdef _k k kubectl
 
 

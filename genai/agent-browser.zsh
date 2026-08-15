@@ -31,7 +31,9 @@ abdash() {
 #   abol "open google.com and search for cats"
 #   abol --model qwen2.5:7b "summarize this page"
 abol() {
-  AI_GATEWAY_URL="${AI_GATEWAY_URL:-http://localhost:11434/v1}" \
+  # agent-browser appends /v1/chat/completions itself, so pass the bare host
+  # (a /v1 suffix here would request /v1/v1/chat/completions, a 404 on Ollama).
+  AI_GATEWAY_URL="${AI_GATEWAY_URL:-http://localhost:11434}" \
   AI_GATEWAY_API_KEY="${AI_GATEWAY_API_KEY:-ollama}" \
   AI_GATEWAY_MODEL="${AI_GATEWAY_MODEL:-${OLLAMA_MODEL:-qwen3:8b}}" \
   agent-browser chat "$@"

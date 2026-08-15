@@ -25,7 +25,9 @@ jc() {
     recipe=$(echo "$pick" | awk '{print $1}')
     local show args
     show=$(just --show "$recipe" 2>/dev/null)
-    if echo "$show" | grep -qE '(\*ARGS|\+ARGS|[A-Z_]+\s*:=|[A-Z_]+\s*\?)'; then
+    # Prompt when the signature line ("recipe param other="x":") has anything
+    # between the recipe name and the ':' (dependencies come after the colon).
+    if printf '%s\n' "$show" | grep -qE "^@?${recipe}[[:space:]]+[^:[:space:]]"; then
       echo "$show"
       echo
       printf "args: "

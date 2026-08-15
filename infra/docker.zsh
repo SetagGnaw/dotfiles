@@ -1,5 +1,6 @@
 function dstop() {
-  pkill -9 Docker && pkill -9 com.docker
+  pkill -9 Docker
+  pkill -9 com.docker
 }
 
 function dstart() {

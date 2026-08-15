@@ -9,21 +9,26 @@ set -euo pipefail
 
 projects="$HOME/.claude/projects"
 
-# Newest *.jsonl (by mtime) under a directory.
+# Newest *.jsonl (by mtime) under a directory, at most <depth> levels down.
+# Conversation transcripts live at the top level of a project dir; deeper
+# files are subagent/workflow transcripts, which must not win. `sed -n 1p`
+# drains its input (unlike `head -1`) so `sort` never gets SIGPIPE, which
+# under pipefail + set -e would abort the script silently.
 pick_newest() {
-  find "$1" -name '*.jsonl' -type f -print0 2>/dev/null \
+  find "$1" -maxdepth "$2" -name '*.jsonl' -type f -print0 2>/dev/null \
     | xargs -0 stat -f '%m %N' 2>/dev/null \
-    | sort -rn | head -1 | cut -d' ' -f2-
+    | sort -rn | sed -n '1p' | cut -d' ' -f2-
 }
 
 # Prefer the focused pane's project (its cwd, which zellij gives this pane).
-# Claude munges the cwd into the project dir name by replacing '/' with '-'.
+# Claude munges the cwd into the project dir name by replacing every
+# non-alphanumeric character (not just '/') with '-'.
 # This keeps Ctrl-y scoped to the conversation you're looking at instead of a
 # background agent or another repo that happened to write more recently.
-proj_dir="$projects/${PWD//\//-}"
+proj_dir="$projects/${PWD//[^A-Za-z0-9]/-}"
 transcript=""
-[[ -d "$proj_dir" ]] && transcript="$(pick_newest "$proj_dir")"
-[[ -z "${transcript:-}" ]] && transcript="$(pick_newest "$projects")"
+[[ -d "$proj_dir" ]] && transcript="$(pick_newest "$proj_dir" 1)"
+[[ -z "${transcript:-}" ]] && transcript="$(pick_newest "$projects" 2)"
 
 if [[ -z "${transcript:-}" || ! -f "$transcript" ]]; then
   echo "No Claude transcript found under $projects" >&2

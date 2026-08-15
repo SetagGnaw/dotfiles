@@ -118,37 +118,44 @@ litlog() {
 
 # Health-check configured models (requires running proxy).
 lithealth() {
-  curl -fsS -H "Authorization: Bearer ${LITELLM_MASTER_KEY:-sk-1234}" \
-    "http://localhost:$_litellm_port/health" | jq .
+  local out
+  out=$(curl -fsS -H "Authorization: Bearer ${LITELLM_MASTER_KEY:-sk-1234}" \
+    "http://localhost:$_litellm_port/health") || return $?
+  jq . <<< "$out"
 }
 
 # List models served by the running proxy.
 litmodels() {
-  curl -fsS -H "Authorization: Bearer ${LITELLM_MASTER_KEY:-sk-1234}" \
-    "http://localhost:$_litellm_port/v1/models" | jq .
+  local out
+  out=$(curl -fsS -H "Authorization: Bearer ${LITELLM_MASTER_KEY:-sk-1234}" \
+    "http://localhost:$_litellm_port/v1/models") || return $?
+  jq . <<< "$out"
 }
 
 # Quick chat completion against the local proxy. Usage: litchat <model> <prompt...>
 litchat() {
-  local model=$1; shift
-  if [[ -z $model || $# -eq 0 ]]; then
+  if (( $# < 2 )) || [[ -z $1 ]]; then
     echo "usage: litchat <model> <prompt...>" >&2
     return 1
   fi
-  curl -fsS "http://localhost:$_litellm_port/v1/chat/completions" \
+  local model=$1; shift
+  local out
+  out=$(curl -fsS "http://localhost:$_litellm_port/v1/chat/completions" \
     -H "Authorization: Bearer ${LITELLM_MASTER_KEY:-sk-1234}" \
     -H "Content-Type: application/json" \
     -d "$(jq -nc --arg m "$model" --arg p "$*" \
-      '{model:$m, messages:[{role:"user", content:$p}]}')" \
-    | jq -r '.choices[0].message.content'
+      '{model:$m, messages:[{role:"user", content:$p}]}')") || return $?
+  jq -r '.choices[0].message.content' <<< "$out"
 }
 
 # Generate a random master key and write it to ~/.litellm_master_key (chmod
 # 600). Restart the proxy to apply.
 litsetkey() {
-  umask 077
   local key="sk-$(openssl rand -hex 24)"
-  printf "%s" "$key" > "$HOME/.litellm_master_key"
+  # umask in a subshell so it does not stick to the interactive shell; chmod
+  # also tightens a pre-existing file.
+  ( umask 077; printf "%s" "$key" > "$HOME/.litellm_master_key" ) \
+    && chmod 600 "$HOME/.litellm_master_key" || return 1
   export LITELLM_MASTER_KEY="$key"
   echo "saved ~/.litellm_master_key — restart proxy: litrestart"
 }
@@ -163,8 +170,8 @@ litsetpw() {
     echo "passwords empty or don't match" >&2
     return 1
   fi
-  umask 077
-  printf "%s" "$pw1" > "$HOME/.litellm_ui_password"
+  ( umask 077; printf "%s" "$pw1" > "$HOME/.litellm_ui_password" ) \
+    && chmod 600 "$HOME/.litellm_ui_password" || return 1
   export UI_PASSWORD="$pw1"
   echo "saved ~/.litellm_ui_password — restart proxy: litstop && litstart"
 }

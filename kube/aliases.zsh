@@ -753,7 +753,7 @@ alias kgowidesln='kubectl get -o=wide --show-labels --namespace'
 alias kgpoowidesln='kubectl get pods -o=wide --show-labels --namespace'
 alias kgdepowidesln='kubectl get deployment -o=wide --show-labels --namespace'
 alias kgstsowidesln='kubectl get statefulset -o=wide --show-labels --namespace'
-alias kgsvcowidesln='kubectl get sxervice -o=wide --show-labels --namespace'
+alias kgsvcowidesln='kubectl get service -o=wide --show-labels --namespace'
 alias kgingowidesln='kubectl get ingress -o=wide --show-labels --namespace'
 alias kgcmowidesln='kubectl get configmap -o=wide --show-labels --namespace'
 alias kgsecowidesln='kubectl get secret -o=wide --show-labels --namespace'
@@ -806,6 +806,10 @@ alias klao='kubectl label --overwrite'
 # Note: to remove by selector use kl directly:
 #   kl pods -l app=nginx env-              # remove 'env' from matching pods
 function klarm() {
+  if (( $# < 3 )); then
+    echo "usage: klarm <resource-type> <name> <key> [key2 ...]" >&2
+    return 1
+  fi
   local resource=$1 name=$2; shift 2
   local -a removals=("${@/%/-}")       # append '-' to each key
   kubectl label "$resource" "$name" "${removals[@]}"

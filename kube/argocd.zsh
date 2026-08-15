@@ -137,9 +137,12 @@ afh() {
     return 1
   fi
 
+  # `argocd app history` prints, per source, a "SOURCE <repo>" line and an
+  # "ID DATE REVISION" header, so keep only data rows (numeric ID), once each.
   local sel
   sel=$(printf '%s\n' "$hist" \
-    | _kf_fzf --header-lines=1 --header="Rollback: select revision of $app") || return
+    | awk '$1 ~ /^[0-9]+$/ && !seen[$1]++' \
+    | _kf_fzf --header="Rollback: select revision of $app  (ID DATE REVISION)") || return
 
   # Column 1 of `argocd app history` is the revision ID.
   local id

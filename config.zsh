@@ -46,7 +46,7 @@ _fn_tagged_lines(){
   local -A tags
   local -a groups=(
     "rc:       rc rz rccache fns als"
-    "shell:    printpath"
+    "shell:    ppath cp2 wtf portkill"
     "nav:      mkcd mkcd.. qcd"
     "aws:      prof freetier"
     "github:   ghauth ghdelete ghinit ghcreate"
@@ -58,7 +58,9 @@ _fn_tagged_lines(){
     local cat=${entry%%:*}
     for fn in ${=entry#*:}; do tags[$fn]=$cat; done
   done
-  print -l ${(ok)functions} | grep -v '^_' | while read fn; do
+  # `--` ends option parsing (some plugin functions start with `-`); the
+  # filter also hides those `-`/`+` prefixed plugin internals.
+  print -rl -- ${(ok)functions} | grep -v '^[_+-]' | while read fn; do
     echo "${fn}=${tags[$fn]:-function}"
   done
 }

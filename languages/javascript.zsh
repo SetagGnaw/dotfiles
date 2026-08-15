@@ -11,9 +11,11 @@ export NVM_DIR="$HOME/.nvm"
 # `nvm` itself still works normally; `nvm use <v>` overrides this.
 if [[ -r "$NVM_DIR/alias/default" ]]; then
   _nvm_alias=$(<"$NVM_DIR/alias/default")
-  # (N) no-match-is-empty, (/) dirs only, (on[-1]) newest name last -> highest
-  # patch when the alias names only a major, e.g. "24" -> v24.18.0.
-  _nvm_bin=("$NVM_DIR/versions/node/v${_nvm_alias}"*/bin(N/on[-1]))
+  # (N) no-match-is-empty, (/) dirs only, (n) numeric sort so v24.18.0 sorts
+  # after v24.9.0, [-1] = highest patch when the alias names only a major,
+  # e.g. "24" -> v24.18.0. Symbolic aliases (node, lts/*) are not resolved
+  # here and fall through to nvm / path.txt.
+  _nvm_bin=("$NVM_DIR/versions/node/v${_nvm_alias#v}"*/bin(N/n[-1]))
   (( $#_nvm_bin )) && path=("${_nvm_bin[1]}" $path)
   unset _nvm_alias _nvm_bin
 fi

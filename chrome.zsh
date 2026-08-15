@@ -8,9 +8,23 @@ chr() {
   open -a "Google Chrome" "$@"
 }
 
+# Everything after `open --args` is handed to Chrome verbatim (open does not
+# resolve it), and Chrome resolves relative paths against its own cwd, not
+# ours. Absolutize any argument that names an existing path.
+_chrome_abs_args() {
+  local a
+  reply=()
+  for a in "$@"; do
+    [[ -e $a ]] && a=${a:A}
+    reply+=("$a")
+  done
+}
+
 # Same, but in an incognito window.
 chri() {
-  open -na "Google Chrome" --args --incognito "$@"
+  local -a reply
+  _chrome_abs_args "$@"
+  open -na "Google Chrome" --args --incognito "${reply[@]}"
 }
 
 # List Chrome profiles as "<directory>\t<display name>".
@@ -45,5 +59,7 @@ chrp() {
     ' "$_chrome_local_state")
     [[ -z $dir ]] && dir=$query
   fi
-  open -na "Google Chrome" --args --profile-directory="$dir" "$@"
+  local -a reply
+  _chrome_abs_args "$@"
+  open -na "Google Chrome" --args --profile-directory="$dir" "${reply[@]}"
 }

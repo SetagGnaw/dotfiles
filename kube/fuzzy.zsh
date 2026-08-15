@@ -69,8 +69,12 @@ kfd() {
   # Route args: detect if first arg is a namespace/flag or resource type
   case "$1" in
     -A) ns_arg="-A"; resource_type="$2" ;;
-    pod|pods|deploy|deployment|svc|service|cm|configmap|secret| \
-    ing|ingress|pvc|node|nodes|ds|daemonset|rs|statefulset|sts|job|cronjob)
+    po|pod|pods|deploy|deployment|deployments|svc|service|services| \
+    cm|configmap|configmaps|secret|secrets|ing|ingress|ingresses| \
+    pvc|pvcs|persistentvolumeclaim|persistentvolumeclaims|pv|no|node|nodes| \
+    ds|daemonset|daemonsets|rs|replicaset|replicasets| \
+    statefulset|statefulsets|sts|job|jobs|cj|cronjob|cronjobs| \
+    sa|serviceaccount|serviceaccounts|hpa|crd|crds|ep|endpoints|ns|namespace|namespaces)
       resource_type="$1" ;;
     *) ns_arg="$1"; resource_type="$2" ;;
   esac
@@ -83,9 +87,15 @@ kfd() {
       | _kf_fzf --header="Describe: select resource type") || return
   fi
 
+  # Fetch with headers: cluster-scoped kinds (nodes, namespaces, pv, ...) have
+  # no NAMESPACE column even with -A, so drop -A for them or the wrong column
+  # would be taken as the name.
+  local out
+  out=$(kubectl get "$resource_type" ${=ns} --show-labels 2>/dev/null) || return
+  [[ "$ns" == "-A" && "${out%%[[:space:]]*}" != "NAMESPACE" ]] && ns=""
   local sel
-  sel=$(kubectl get "$resource_type" ${=ns} --no-headers --show-labels 2>/dev/null \
-    | _kf_fzf --header="Describe: select $resource_type  [$ns]") || return
+  sel=$(printf '%s\n' "$out" | tail -n +2 \
+    | _kf_fzf --header="Describe: select $resource_type  [${ns:-cluster}]") || return
   local KF_NAME KF_NS
   _kf_parse_selection "$sel" "$ns"
 
@@ -100,12 +110,12 @@ kfg() {
   sel=$(kubectl get all ${=ns} --no-headers --show-labels 2>/dev/null \
     | _kf_fzf --header="Get: select resource  [$ns]") || return
 
-  # first column is "type/name" e.g. pod/my-pod-xxx or deployment.apps/my-deploy
-  local type_name
-  type_name=$(echo "$sel" | awk '{print $1}')
-  local resource_type="${type_name%%/*}"
-  local KF_NAME="${type_name##*/}"
-  local KF_NS="$ns"
+  # name column is "type/name" e.g. pod/my-pod-xxx or deployment.apps/my-deploy
+  # (with -A it is the second column; _kf_parse_selection handles both)
+  local KF_NAME KF_NS
+  _kf_parse_selection "$sel" "$ns"
+  local resource_type="${KF_NAME%%/*}"
+  KF_NAME="${KF_NAME##*/}"
 
   # dont pipe into neat, if you want clean yaml
   # use kn - knp, knd, knsvc
@@ -209,18 +219,29 @@ kfcr() {
       local port target_port
       echo -n "Port (exposed): ";       read port;        [[ -z "$port" ]] && { echo "Aborted."; return 1; }
       echo -n "Target port [=$port]: "; read target_port; target_port="${target_port:-$port}"
-      echo "Selectors (key=value, empty line to finish):"
+      echo "Selectors (key=value, empty line to finish; default app=$name):"
       local -a sel_pairs=()
       while true; do
         local kv; echo -n "  key=value: "; read kv
         [[ -z "$kv" ]] && break
         sel_pairs+=("$kv")
       done
-      local -a sel_flag=()
-      [[ ${#sel_pairs[@]} -gt 0 ]] && sel_flag=(--selector="${(j:,:)sel_pairs}")
-      echo "\n$ kubectl create service $svc_subtype $name --tcp=$port:$target_port ${sel_flag[*]} ${dry_flags[*]} ${ns}"
-      _kf_confirm "Run?" || { echo "Aborted."; return 1; }
-      kubectl create service "$svc_subtype" "$name" --tcp="$port:$target_port" "${sel_flag[@]}" "${dry_flags[@]}" ${=ns}
+      local selector="${(j:,:)sel_pairs}"
+      if [[ -z "$selector" ]]; then
+        echo "\n$ kubectl create service $svc_subtype $name --tcp=$port:$target_port ${dry_flags[*]} ${ns}"
+        _kf_confirm "Run?" || { echo "Aborted."; return 1; }
+        kubectl create service "$svc_subtype" "$name" --tcp="$port:$target_port" "${dry_flags[@]}" ${=ns}
+      else
+        # `kubectl create service` has no --selector flag; set it on the
+        # dry-run manifest with `kubectl set selector --local` (documented
+        # pattern), then create unless -dr.
+        echo "\n$ kubectl create service $svc_subtype $name --tcp=$port:$target_port --dry-run=client -o yaml ${ns} \\"
+        echo "    | kubectl set selector --local -f - '$selector' -o yaml$( (( dry_run )) || echo " | kubectl create -f - ${ns}" )"
+        _kf_confirm "Run?" || { echo "Aborted."; return 1; }
+        kubectl create service "$svc_subtype" "$name" --tcp="$port:$target_port" --dry-run=client -o yaml ${=ns} \
+          | kubectl set selector --local -f - "$selector" -o yaml \
+          | { (( dry_run )) && cat || kubectl create -f - ${=ns}; }
+      fi
       ;;
 
     job)
@@ -383,11 +404,17 @@ kfrm() {
   local count
   count=$(echo "$sel" | wc -l | tr -d ' ')
   echo "About to delete $count resource(s):"
-  echo "$sel" | awk '{print "  " $1}'
+  # With -A the first column is the namespace; _kf_parse_selection handles both
+  local KF_NAME KF_NS line
+  echo "$sel" | while IFS= read -r line; do
+    _kf_parse_selection "$line" "$ns"
+    echo "  $KF_NAME  [${KF_NS#-n }]"
+  done
   _kf_confirm "Confirm delete?" || { echo "Aborted."; return 1; }
 
-  echo "$sel" | awk '{print $1}' | while IFS='/' read -r resource_type KF_NAME; do
-    kubectl delete "$resource_type" "$KF_NAME" ${=ns} --wait=false
+  echo "$sel" | while IFS= read -r line; do
+    _kf_parse_selection "$line" "$ns"
+    kubectl delete "${KF_NAME%%/*}" "${KF_NAME##*/}" ${=KF_NS} --wait=false
   done
 }
 
@@ -415,11 +442,11 @@ kfla() {
   sel=$(kubectl get all ${=ns} --no-headers --show-labels 2>/dev/null \
     | _kf_fzf --header="Label: select resource  [$ns]") || return
 
-  local type_name
-  type_name=$(echo "$sel" | awk '{print $1}')
-  local resource_type="${type_name%%/*}"
-  local KF_NAME="${type_name##*/}"
-  local KF_NS="$ns"
+  # name column is "type/name" (second column with -A)
+  local KF_NAME KF_NS
+  _kf_parse_selection "$sel" "$ns"
+  local resource_type="${KF_NAME%%/*}"
+  KF_NAME="${KF_NAME##*/}"
 
   local existing_labels
   existing_labels=$(kubectl get "$resource_type" "$KF_NAME" ${=KF_NS} \
@@ -484,16 +511,37 @@ kfcan() {
     '*' \
     | _kf_fzf --header="can-i: select verb") || return
 
+  # Discovery only advertises the standard verbs, so filtering api-resources
+  # by an RBAC-only verb (impersonate, bind, escalate, *) yields nothing;
+  # exec/attach/port-forward are not verbs at all but `create` on a pod
+  # subresource, which `auth can-i` takes via --subresource.
   local resource
-  resource=$(kubectl api-resources --no-headers --verbs="$verb" 2>/dev/null \
-    | awk '{print $1}' \
-    | _kf_fzf --header="can-i: select resource  [verb=$verb]") || return
+  local -a res_args=() extra=() sub_flag=()
+  case "$verb" in
+    exec|attach|port-forward)
+      sub_flag=(--subresource="${verb//-/}")
+      verb=create
+      resource=pods
+      ;;
+    get|list|watch|create|update|patch|delete|deletecollection)
+      res_args=(--verbs="$verb")
+      ;;
+    impersonate) extra=(users groups serviceaccounts uids userextras) ;;
+    bind|escalate) extra=(roles clusterroles) ;;
+    '*') extra=('*') ;;
+  esac
+  if [[ -z "$resource" ]]; then
+    resource=$( { (( ${#extra[@]} )) && printf '%s\n' "${extra[@]}"; \
+        kubectl api-resources --no-headers "${res_args[@]}" 2>/dev/null \
+        | awk '{print $1}'; } \
+      | _kf_fzf --header="can-i: select resource  [verb=$verb]") || return
+  fi
 
   local as_flag=""
   local as_who
   echo -n "Impersonate (--as) [empty to use current user]: "; read as_who
   [[ -n "$as_who" ]] && as_flag="--as=$as_who"
 
-  echo "\n$ kubectl auth can-i $verb $resource ${as_flag} ${ns}"
-  kubectl auth can-i "$verb" "$resource" ${=as_flag} ${=ns}
+  echo "\n$ kubectl auth can-i $verb $resource ${sub_flag[*]} ${as_flag} ${ns}"
+  kubectl auth can-i "$verb" "$resource" "${sub_flag[@]}" ${=as_flag} ${=ns}
 }

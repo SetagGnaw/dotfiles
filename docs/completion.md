@@ -42,6 +42,7 @@ directory sorts earlier in `fpath` and would shadow the brew-managed files.
 mkdir -p ~/.oh-my-zsh/custom/completions
 
 # for each cli WITHOUT an omz plugin
+kubectl completion zsh > ~/.oh-my-zsh/custom/completions/_kubectl
 kind completion zsh > ~/.oh-my-zsh/custom/completions/_kind
 kustomize completion zsh > ~/.oh-my-zsh/custom/completions/_kustomize
 istioctl completion zsh > ~/.oh-my-zsh/custom/completions/_istioctl
