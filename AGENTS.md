@@ -5,12 +5,12 @@
 This repository manages local shell, editor, and Zellij configuration.
 
 - `.zshrc` is the main entry point. It configures Oh My Zsh, paths, history behavior, and sources each `*.zsh` snippet via an explicit ordered list (no globbing).
-- Core shell snippets sit at the repo root: `navigation.zsh`, `shortcuts.zsh`, `config.zsh`, `completion.zsh`, `chrome.zsh`, `git.zsh`, `github.zsh`, `docker.zsh`, `build-tools.zsh`, `zellij.zsh`.
-- `ai/` groups AI CLI helpers, one file per tool: `gemini.zsh`, `codex.zsh`, `cursor.zsh`, `claude.zsh`, `skills.zsh` (Claude Code skill management), and `agent-browser.zsh`.
+- Core shell snippets sit at the repo root: `navigation.zsh`, `shortcuts.zsh`, `config.zsh`, `completion.zsh`, `chrome.zsh`, `git.zsh`, `github.zsh`, `docker.zsh`, `build-tools.zsh`, `prom.zsh`, `terraform.zsh`, `zellij.zsh`.
+- `genai/` groups AI CLI helpers, one file per tool: `gemini.zsh`, `codex.zsh`, `cursor.zsh`, `claude.zsh`, `skills.zsh` (Claude Code skill management), and `agent-browser.zsh`.
 - `cloud/` groups cloud SDKs (`aws.zsh`, `gcp.zsh`, `oci.zsh`).
 - `languages/` groups language toolchains (`python.zsh`, `java.zsh`, `javascript.zsh`).
 - `kube/` groups Kubernetes helpers. `common.zsh` defines `_kf_*` fzf helpers and must be sourced before `fuzzy.zsh` / `neat.zsh` / `argocd.zsh`; the order is enforced by `.zshrc`. `argocd.zsh` provides the `af*` fuzzy ArgoCD helpers and reuses `_kf_fzf` / `_kf_confirm` / `_kf_save`.
-- `system/` groups infra and maintenance tools (`prom.zsh`, `terraform.zsh`, `free-disk.zsh`, `free-resources.zsh`, `automation.zsh`).
+- `system/` groups maintenance tools (`free-disk.zsh`, `free-resources.zsh`, `automation.zsh`).
 - `.scripts/` holds standalone executables (`zc`, `zo`, ...) invoked by absolute path from `zellij.zsh`, plus `ai-cli-update`, run daily by launchd (`com.gateswang.ai-cli-update`, helpers in `system/automation.zsh`).
 - `zellij/` contains `config.kdl` and reusable layouts.
 - `path.txt`, `fpath.txt`, and `docs/` document installed shell/editor dependencies.

@@ -463,9 +463,11 @@ source "$config_dir/kube/fuzzy.zsh"
 source "$config_dir/kube/neat.zsh"
 source "$config_dir/kube/argocd.zsh"
 
-# Infra + system maintenance
-source "$config_dir/system/prom.zsh"
-source "$config_dir/system/terraform.zsh"
+# Infra
+source "$config_dir/prom.zsh"
+source "$config_dir/terraform.zsh"
+
+# System maintenance
 source "$config_dir/system/free-disk.zsh"
 source "$config_dir/system/free-resources.zsh"
 source "$config_dir/system/automation.zsh"
@@ -474,14 +476,14 @@ source "$config_dir/system/automation.zsh"
 source "$config_dir/build-tools.zsh"
 
 # AI CLIs
-source "$config_dir/ai/gemini.zsh"
-source "$config_dir/ai/codex.zsh"
-source "$config_dir/ai/antigravity.zsh"
-source "$config_dir/ai/openclaw.zsh"
-source "$config_dir/ai/cursor.zsh"
-source "$config_dir/ai/claude.zsh"
-source "$config_dir/ai/skills.zsh"
-source "$config_dir/ai/agent-browser.zsh"
+source "$config_dir/genai/gemini.zsh"
+source "$config_dir/genai/codex.zsh"
+source "$config_dir/genai/antigravity.zsh"
+source "$config_dir/genai/openclaw.zsh"
+source "$config_dir/genai/cursor.zsh"
+source "$config_dir/genai/claude.zsh"
+source "$config_dir/genai/skills.zsh"
+source "$config_dir/genai/agent-browser.zsh"
 
 # AI model servers / gateways
 source "$config_dir/huggingface.zsh"

@@ -21,7 +21,7 @@ log "=== AI CLI update run ==="
 log "claude $(claude --version 2>&1)"
 if ! claude update; then
   # npm rename can leave a stale install dir; clear it and reinstall
-  # (same recovery as cre in ai/claude.zsh)
+  # (same recovery as cre in genai/claude.zsh)
   log "claude update failed, reinstalling via npm"
   root="$(npm root -g 2>/dev/null)/@anthropic-ai"
   [[ -d "$root" ]] && rm -rf "$root/claude-code" "$root"/.claude-code-*
