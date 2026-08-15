@@ -5,8 +5,9 @@
 This repository manages local shell, editor, and Zellij configuration.
 
 - `.zshrc` is the main entry point. It configures Oh My Zsh, paths, history behavior, and sources each `*.zsh` snippet via an explicit ordered list (no globbing).
-- Core shell snippets sit at the repo root: `navigation.zsh`, `shortcuts.zsh`, `config.zsh`, `completion.zsh`, `chrome.zsh`, `git.zsh`, `github.zsh`, `docker.zsh`, `build-tools.zsh`, `prom.zsh`, `terraform.zsh`, `packer.zsh`, `zellij.zsh`.
-- `genai/` groups AI CLI helpers, one file per tool: `gemini.zsh`, `codex.zsh`, `cursor.zsh`, `claude.zsh`, `skills.zsh` (Claude Code skill management), and `agent-browser.zsh`.
+- Core shell snippets sit at the repo root: `navigation.zsh`, `shortcuts.zsh`, `config.zsh`, `completion.zsh`, `chrome.zsh`, `git.zsh`, `github.zsh`, `transfer.zsh`, `build-tools.zsh`, `huggingface.zsh`, `zellij.zsh`.
+- `genai/` groups AI CLI helpers and local model servers, one file per tool: `gemini.zsh`, `codex.zsh`, `cursor.zsh`, `claude.zsh`, `skills.zsh` (Claude Code skill management), `agent-browser.zsh`, `litellm.zsh`, and `ollama.zsh`.
+- `infra/` groups infrastructure tooling (`docker.zsh`, `packer.zsh`, `prom.zsh`, `terraform.zsh`).
 - `cloud/` groups cloud SDKs (`aws.zsh`, `gcp.zsh`, `oci.zsh`).
 - `languages/` groups language toolchains (`python.zsh`, `java.zsh`, `javascript.zsh`).
 - `kube/` groups Kubernetes helpers. `common.zsh` defines `_kf_*` fzf helpers and must be sourced before `fuzzy.zsh` / `neat.zsh` / `argocd.zsh`; the order is enforced by `.zshrc`. `argocd.zsh` provides the `af*` fuzzy ArgoCD helpers and reuses `_kf_fzf` / `_kf_confirm` / `_kf_save`.

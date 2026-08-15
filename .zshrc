@@ -459,9 +459,6 @@ source "$config_dir/git.zsh"
 source "$config_dir/github.zsh"
 source "$config_dir/transfer.zsh"
 
-# Containers
-source "$config_dir/docker.zsh"
-
 # Kubernetes (common.zsh must precede fuzzy/neat/argocd)
 source "$config_dir/kube/common.zsh"
 source "$config_dir/kube/core.zsh"
@@ -474,9 +471,10 @@ source "$config_dir/kube/neat.zsh"
 source "$config_dir/kube/argocd.zsh"
 
 # Infra
-source "$config_dir/prom.zsh"
-source "$config_dir/terraform.zsh"
-source "$config_dir/packer.zsh"
+source "$config_dir/infra/docker.zsh"
+source "$config_dir/infra/prom.zsh"
+source "$config_dir/infra/terraform.zsh"
+source "$config_dir/infra/packer.zsh"
 
 # System maintenance
 source "$config_dir/system/free-disk.zsh"
@@ -498,8 +496,8 @@ source "$config_dir/genai/agent-browser.zsh"
 
 # AI model servers / gateways
 source "$config_dir/huggingface.zsh"
-source "$config_dir/litellm.zsh"
-source "$config_dir/ollama.zsh"
+source "$config_dir/genai/litellm.zsh"
+source "$config_dir/genai/ollama.zsh"
 
 # Multiplexer
 source "$config_dir/zellij.zsh"
