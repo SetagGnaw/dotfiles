@@ -4,8 +4,9 @@
 
 This repository manages local shell, editor, and Zellij configuration.
 
-- `.zshrc` is the main entry point. It configures Oh My Zsh, paths, history behavior, and sources each `*.zsh` snippet via an explicit ordered list (no globbing).
-- Core shell snippets sit at the repo root: `navigation.zsh`, `shortcuts.zsh`, `config.zsh`, `completion.zsh`, `chrome.zsh`, `git.zsh`, `github.zsh`, `transfer.zsh`, `build-tools.zsh`, `huggingface.zsh`, `zellij.zsh`.
+- `.zshrc` is the main entry point. It configures Oh My Zsh and paths, and sources each `*.zsh` snippet via an explicit ordered list (no globbing).
+- Core shell snippets sit at the repo root: `navigation.zsh`, `shortcuts.zsh`, `config.zsh`, `history.zsh`, `completion.zsh`, `chrome.zsh`, `git.zsh`, `github.zsh`, `transfer.zsh`, `build-tools.zsh`, `huggingface.zsh`, `zellij.zsh`.
+- `history.zsh` owns everything history-related: HISTFILE/sizes/options, the hooks that persist only commands that ran and exited 0 (`zshaddhistory` + `preexec` + `precmd`, `print -Sr` then `fc -AI`), the `history-list-*` / `history-prune-*` helpers, and the `^R`/`^S` fallback search keys. It must be sourced before `completion.zsh`, whose `fzf --zsh` rebinds `^R`; never add an explicit `fc -R "$HISTFILE"` (interactive zsh reads it itself after the rc files, so that double-loads history).
 - `genai/` groups AI CLI helpers and local model servers, one file per tool: `gemini.zsh`, `codex.zsh`, `cursor.zsh`, `claude.zsh`, `skills.zsh` (Claude Code skill management), `agent-browser.zsh`, `litellm.zsh`, and `ollama.zsh`.
 - `infra/` groups infrastructure tooling (`docker.zsh`, `packer.zsh`, `prom.zsh`, `terraform.zsh`).
 - `cloud/` groups cloud SDKs (`aws.zsh`, `gcp.zsh`, `oci.zsh`).
