@@ -34,3 +34,9 @@ jc() {
     echo ">>> just $recipe $args"
     eval "just $recipe $args"
 }
+
+if (( $+commands[task] )); then
+  t() { command task "$@"; }
+  eval "$(task --completion zsh)"
+  compdef _task t
+fi

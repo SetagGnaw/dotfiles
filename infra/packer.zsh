@@ -5,4 +5,7 @@
 if (( $+commands[packer] )); then
   autoload -Uz bashcompinit && bashcompinit
   complete -o nospace -C "$commands[packer]" packer
+
+  p() { command packer "$@"; }
+  complete -o nospace -C "$commands[packer]" p
 fi
