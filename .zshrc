@@ -90,6 +90,7 @@ plugins=(
   argocd
   dirhistory
   vscode
+  docker
 )
 
 ZSH_AUTOSUGGEST_USE_ASYNC=1
@@ -120,46 +121,74 @@ fi
 source $ZSH/oh-my-zsh.sh
 
 # Keep failed commands out of both autosuggestions and persisted history.
+#
+# zshaddhistory runs once per command line, after history expansion and with
+# every PS2 continuation line included. Returning 1 makes zsh keep the line
+# only until the next line is entered (the same "linger" HIST_IGNORE_SPACE
+# uses), so up-arrow can still recall a failed command to fix it, but nothing
+# reaches HISTFILE or the permanent in-memory list. precmd then re-adds the
+# line for real (print -S, split into words so Alt-. and !$ keep working)
+# and appends it to HISTFILE if the command exited 0.
 autoload -Uz add-zsh-hook
 setopt HIST_IGNORE_SPACE
-typeset -g __history_pending_command=
-typeset -gi __history_skip_persist=0
+typeset -g  __history_pending_command=
+typeset -g  __history_last_saved=
+typeset -gi __history_line_executed=0
+typeset -gi __history_initialized=0
+typeset -g  __history_autosuggest_ignore_base=${ZSH_AUTOSUGGEST_HISTORY_IGNORE-}
 
-__history_accept_line() {
-  __history_pending_command=$BUFFER
-  __history_skip_persist=0
+__history_capture_line() {
+  emulate -L zsh -o extendedglob
+  # $1 always ends with the terminating newline; pasted lines may carry more.
+  __history_pending_command=${1%%[[:space:]]#}
+  return 1
+}
 
-  if [[ -z ${BUFFER//[[:space:]]/} ]]; then
-    __history_pending_command=
-    return
-  fi
-
-  if [[ $BUFFER == [[:space:]]* ]]; then
-    __history_skip_persist=1
-  fi
-
-  # Prefix with a space so zsh never adds the line to its main history path.
-  BUFFER=" $BUFFER"
-  zle .accept-line
+# preexec only runs when the line is really executed. It does not run when
+# HIST_VERIFY (oh-my-zsh) merely reloads an expanded `!!` line into the
+# buffer, in which case $? in precmd would be stale.
+__history_mark_line_executed() {
+  __history_line_executed=1
 }
 
 __history_save_successful_command() {
-  local exit_code=$?
+  local exit_code=$? cmd=$__history_pending_command
+  local -i executed=__history_line_executed
+  __history_pending_command=
+  __history_line_executed=0
 
-  if [[ -n $__history_pending_command && $__history_skip_persist -eq 0 && $exit_code -eq 0 ]]; then
-    print -sr -- "$__history_pending_command"
-    [[ -n ${HISTFILE:-} ]] && fc -AI "$HISTFILE"
+  # Seed the dedupe check with the last entry loaded from HISTFILE.
+  if (( ! __history_initialized )); then
+    __history_initialized=1
+    __history_last_saved=${history[$((HISTCMD-1))]:-}
   fi
 
-  __history_pending_command=
-  __history_skip_persist=0
+  # Nothing ran (empty line, Ctrl-C, HIST_VERIFY reload) or a leading space:
+  # keep it out.
+  [[ -n $cmd && $cmd != [[:space:]]* ]] && (( executed )) || return 0
+
+  # A new line was entered, so the previous lingering entry is gone by now.
+  ZSH_AUTOSUGGEST_HISTORY_IGNORE=$__history_autosuggest_ignore_base
+
+  if (( exit_code != 0 )); then
+    # The failed line still lingers in $history until the next command line;
+    # hide exactly that text from zsh-autosuggestions in the meantime.
+    ZSH_AUTOSUGGEST_HISTORY_IGNORE="${__history_autosuggest_ignore_base:+${__history_autosuggest_ignore_base}|}${(b)cmd}"
+    return 0
+  fi
+
+  # print -S bypasses HIST_IGNORE_DUPS, so collapse consecutive repeats here.
+  [[ $cmd == "$__history_last_saved" ]] && return 0
+  __history_last_saved=$cmd
+
+  # -S: one argument, split into words like a command line. -r: no escapes.
+  print -Sr -- "$cmd"
+  [[ -n ${HISTFILE:-} ]] && fc -AI "$HISTFILE"
+  return 0
 }
 
-if [[ -o interactive ]] && (( ${+widgets[accept-line]} )); then
-  zle -N accept-line __history_accept_line
-  (( $+functions[_zsh_autosuggest_bind_widgets] )) && _zsh_autosuggest_bind_widgets
-fi
-
+add-zsh-hook zshaddhistory __history_capture_line
+add-zsh-hook preexec __history_mark_line_executed
 add-zsh-hook precmd __history_save_successful_command
 
 __history_entry_is_valid() {
