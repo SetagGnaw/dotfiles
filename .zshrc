@@ -84,6 +84,7 @@ plugins=(
   zsh-autosuggestions
   fzf-tab
   uv
+  task
   terraform
   helm
   argocd
@@ -93,7 +94,16 @@ plugins=(
 
 ZSH_AUTOSUGGEST_USE_ASYNC=1
 ZSH_AUTOSUGGEST_MANUAL_REBIND=1
-typeset -U path
+# Dedupe both. fpath especially: oh-my-zsh fingerprints the completion dump
+# with "#omz fpath: $fpath" and deletes the dump whenever that line changes
+# (oh-my-zsh.sh). Without -U, the prepends below re-add every entry on each
+# start, so the fingerprint never matches and compinit rescans thousands of
+# completion files every time (~4s).
+typeset -U path fpath
+# Un-export FPATH. `brew shellenv` in .zprofile exports it, which leaks the
+# accumulated list into child shells (zellij pane -> VS Code terminal -> ...),
+# where it grows again on every nesting level.
+typeset +x FPATH
 path=(${(f)"$(<$HOME/Config/path.txt)"} $path)
 fpath=(${(f)"$(<$HOME/Config/fpath.txt)"} $fpath)
 # test_fpath=(${(f)"$(<fpath.txt)"})
@@ -466,6 +476,7 @@ source "$config_dir/kube/argocd.zsh"
 # Infra
 source "$config_dir/prom.zsh"
 source "$config_dir/terraform.zsh"
+source "$config_dir/packer.zsh"
 
 # System maintenance
 source "$config_dir/system/free-disk.zsh"

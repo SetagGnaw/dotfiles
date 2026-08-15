@@ -5,7 +5,7 @@
 This repository manages local shell, editor, and Zellij configuration.
 
 - `.zshrc` is the main entry point. It configures Oh My Zsh, paths, history behavior, and sources each `*.zsh` snippet via an explicit ordered list (no globbing).
-- Core shell snippets sit at the repo root: `navigation.zsh`, `shortcuts.zsh`, `config.zsh`, `completion.zsh`, `chrome.zsh`, `git.zsh`, `github.zsh`, `docker.zsh`, `build-tools.zsh`, `prom.zsh`, `terraform.zsh`, `zellij.zsh`.
+- Core shell snippets sit at the repo root: `navigation.zsh`, `shortcuts.zsh`, `config.zsh`, `completion.zsh`, `chrome.zsh`, `git.zsh`, `github.zsh`, `docker.zsh`, `build-tools.zsh`, `prom.zsh`, `terraform.zsh`, `packer.zsh`, `zellij.zsh`.
 - `genai/` groups AI CLI helpers, one file per tool: `gemini.zsh`, `codex.zsh`, `cursor.zsh`, `claude.zsh`, `skills.zsh` (Claude Code skill management), and `agent-browser.zsh`.
 - `cloud/` groups cloud SDKs (`aws.zsh`, `gcp.zsh`, `oci.zsh`).
 - `languages/` groups language toolchains (`python.zsh`, `java.zsh`, `javascript.zsh`).
