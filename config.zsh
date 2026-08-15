@@ -1,6 +1,15 @@
 CONFIGPATH="$HOME/Config"
 ZSHPATH="$HOME/.zshrc"
 
+# Short terminal/tab titles. Oh My Zsh's lib/termsupport.zsh defaults the window
+# title to "%n@%m:%~" (user@host:full-path), which VS Code shows verbatim as the
+# terminal tab name because terminal.integrated.tabs.title is "${sequence}".
+# These assignments are unconditional in termsupport.zsh, so this file must stay
+# sourced after "source $ZSH/oh-my-zsh.sh" in .zshrc for the override to stick.
+# %1~ is the current directory's basename ("~" when at home).
+ZSH_THEME_TERM_TITLE_IDLE="%1~"
+ZSH_THEME_TERM_TAB_TITLE_IDLE="%1~"
+
 # # Auto-reload zshrc when config files change
 # RC_AUTO_RELOAD=true
 # _rc_mtime() { stat -f %m "$CONFIGPATH"/**/.*.sh(DN) 2>/dev/null | sort -rn | head -1; }
