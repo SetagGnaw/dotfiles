@@ -22,12 +22,13 @@ setopt EXTENDED_HISTORY #add timestamp for each entry
 # starts won't bleed into our up-arrow history.
 unsetopt SHARE_HISTORY
 
-# Force-load HISTFILE into memory. zsh's auto-load is unreliable when HISTFILE
-# is set after oh-my-zsh.sh runs, which leaves zsh-autosuggestions with
-# nothing to match against.
-[[ -r $HISTFILE ]] && fc -R "$HISTFILE"
+# Do not `fc -R "$HISTFILE"` here: an interactive zsh reads $HISTFILE itself
+# once all rc files have run (so setting HISTFILE after oh-my-zsh.sh is fine),
+# and an explicit read on top of that loads every entry twice, which showed
+# up as duplicated Up-arrow history. (`zsh -i -c ...` never auto-reads, which
+# is why a probe run that way looks like the auto-load is broken.)
 
-# sed -i '' '/kind/d' ~/.zhistory && exec zsh && fc -R
+# sed -i '' '/kind/d' ~/.zhistory && exec zsh
 
 # comment out
 # autoload -Uz compinit; compinit
